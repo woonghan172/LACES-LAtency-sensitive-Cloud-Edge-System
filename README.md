@@ -17,3 +17,6 @@ When these devices execute intensive AI inference within cloud environments, ach
 
 ## Design
 TBD
+
+## Evaluation
+TBD
