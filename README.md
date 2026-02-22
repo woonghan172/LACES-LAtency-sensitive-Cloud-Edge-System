@@ -14,3 +14,6 @@ We will start from implementing a basic KV store cloud system and expand the imp
 Since the inception of the 'smartphone,' a diverse array of user devices—such as Meta Glass, Galaxy Ring, Apple Vision Pro, and even autonomous vehicles like Tesla—has emerged. These platforms hold immense potential, enabling unprecedented experiences including real-time language translation, gesture control in augmented reality, and autonomous driving. However, three critical factors must be considered regarding these devices: latency is paramount, they rely on a massive volume of AI applications (at least data-intensive applications), and they are increasingly expected to operate within cloud-based ecosystems (e.g., AWS’s IoT deployment platform, ‘Greengrass’).
 
 When these devices execute intensive AI inference within cloud environments, achieving low latency becomes a significant challenge. First, user devices and edge cloud remain resource-constrained, while applications such as AI inferences  are computationally heavy. Second, cloud-based systems introduce inherent bottlenecks, specifically cold start delays and data offloading overhead. Consequently, this research aims to develop a low-latency cloud system optimized for the unique requirements of these next-generation user devices.
+
+## Design
+TBD
