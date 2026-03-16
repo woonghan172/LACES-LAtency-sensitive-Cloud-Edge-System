@@ -23,6 +23,7 @@ import edu.boun.edgecloudsim.cloud_server.CloudVM;
 import edu.boun.edgecloudsim.core.SimManager;
 import edu.boun.edgecloudsim.core.SimSettings;
 import edu.boun.edgecloudsim.edge_orchestrator.EdgeOrchestrator;
+import edu.boun.edgecloudsim.edge_server.EdgeHost;
 import edu.boun.edgecloudsim.edge_server.EdgeVM;
 import edu.boun.edgecloudsim.edge_client.CpuUtilizationModel_Custom;
 import edu.boun.edgecloudsim.edge_client.Task;
@@ -33,6 +34,7 @@ import edu.boun.edgecloudsim.utils.SimUtils;
  * Responsibilities:
  * - Decide offloading target: cloud vs generic edge datacenter
  * - Policies:
+ * 	   LACES			  : Latency sensitive
  *     NETWORK_BASED      : prefer cloud if estimated uplink WAN BW > 5 Mbps
  *     UTILIZATION_BASED  : prefer cloud if overall edge utilization > 75%
  *     RANDOM             : 50/50 coin flip
@@ -101,6 +103,95 @@ public class LacesEdgeOrchestrator extends EdgeOrchestrator {
 				result = SimSettings.CLOUD_DATACENTER_ID;
 			else
 				result = SimSettings.GENERIC_EDGE_DEVICE_ID;
+		}
+		else if(policy.equals("LACES")){
+
+			// Latency-sensitive policy:
+			// compare the estimated end-to-end latency of the best edge VM
+			// and the best cloud VM, then choose the smaller one.
+			Vm edgeVm = getVmToOffload(task, SimSettings.GENERIC_EDGE_DEVICE_ID);
+			Vm cloudVm = getVmToOffload(task, SimSettings.CLOUD_DATACENTER_ID);
+
+			double edgeTotalLatency = Double.MAX_VALUE;
+			double cloudTotalLatency = Double.MAX_VALUE;
+
+			// --- estimate cloud latency ---
+			if (cloudVm != null) {
+				double cloudUploadDelay = SimManager.getInstance().getNetworkModel()
+						.getUploadDelay(task.getMobileDeviceId(), SimSettings.CLOUD_DATACENTER_ID, task);
+				double cloudDownloadDelay = SimManager.getInstance().getNetworkModel()
+						.getDownloadDelay(SimSettings.CLOUD_DATACENTER_ID, task.getMobileDeviceId(), task);
+
+				if (cloudUploadDelay > 0 && cloudDownloadDelay > 0) {
+					double cloudRequiredCapacity =
+							((CpuUtilizationModel_Custom) task.getUtilizationModelCpu())
+									.predictUtilization(((CloudVM) cloudVm).getVmType());
+					double cloudAvailableCapacity =
+							100.0 - cloudVm.getCloudletScheduler().getTotalUtilizationOfCpu(CloudSim.clock());
+
+					double cloudCapacityRatio = Math.max(0.01, cloudAvailableCapacity / 100.0);
+					double cloudExecutionDelay =
+							task.getCloudletLength() /
+							(cloudVm.getMips() * cloudVm.getNumberOfPes() * cloudCapacityRatio);
+
+					// small extra penalty if the VM is already close to saturation
+					double cloudQueuePenalty = cloudRequiredCapacity / Math.max(1.0, cloudAvailableCapacity);
+
+					cloudTotalLatency =
+							cloudUploadDelay + cloudDownloadDelay + cloudExecutionDelay + cloudQueuePenalty;
+				}
+			}
+
+			// --- estimate edge latency ---
+			if (edgeVm != null) {
+				double edgeUploadDelay = SimManager.getInstance().getNetworkModel()
+						.getUploadDelay(task.getMobileDeviceId(), SimSettings.GENERIC_EDGE_DEVICE_ID, task);
+				double edgeDownloadDelay = SimManager.getInstance().getNetworkModel()
+						.getDownloadDelay(edgeVm.getHost().getId(), task.getMobileDeviceId(), task);
+
+				double manUploadDelay = 0;
+				double manDownloadDelay = 0;
+
+				// if the selected edge VM is on a remote edge host, add MAN relay delays
+				EdgeHost edgeHost = (EdgeHost) edgeVm.getHost();
+				if (edgeHost.getLocation().getServingWlanId() !=
+						task.getSubmittedLocation().getServingWlanId()) {
+					manUploadDelay = SimManager.getInstance().getNetworkModel()
+							.getUploadDelay(SimSettings.GENERIC_EDGE_DEVICE_ID,
+									SimSettings.GENERIC_EDGE_DEVICE_ID, task);
+					manDownloadDelay = SimManager.getInstance().getNetworkModel()
+							.getDownloadDelay(SimSettings.GENERIC_EDGE_DEVICE_ID,
+									SimSettings.GENERIC_EDGE_DEVICE_ID, task);
+				}
+
+				if (edgeUploadDelay > 0 && edgeDownloadDelay > 0 &&
+						manUploadDelay >= 0 && manDownloadDelay >= 0) {
+					double edgeRequiredCapacity =
+							((CpuUtilizationModel_Custom) task.getUtilizationModelCpu())
+									.predictUtilization(((EdgeVM) edgeVm).getVmType());
+					double edgeAvailableCapacity =
+							100.0 - edgeVm.getCloudletScheduler().getTotalUtilizationOfCpu(CloudSim.clock());
+
+					double edgeCapacityRatio = Math.max(0.01, edgeAvailableCapacity / 100.0);
+					double edgeExecutionDelay =
+							task.getCloudletLength() /
+							(edgeVm.getMips() * edgeVm.getNumberOfPes() * edgeCapacityRatio);
+
+					// small extra penalty if the VM is already close to saturation
+					double edgeQueuePenalty = edgeRequiredCapacity / Math.max(1.0, edgeAvailableCapacity);
+
+					edgeTotalLatency =
+							edgeUploadDelay + edgeDownloadDelay +
+							manUploadDelay + manDownloadDelay +
+							edgeExecutionDelay + edgeQueuePenalty;
+				}
+			}
+
+			// choose the lower-latency feasible option
+			if (edgeTotalLatency <= cloudTotalLatency)
+				result = SimSettings.GENERIC_EDGE_DEVICE_ID;
+			else
+				result = SimSettings.CLOUD_DATACENTER_ID;
 		}
 		else {
 			// Unknown policy => configuration error

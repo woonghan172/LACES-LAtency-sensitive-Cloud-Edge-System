@@ -7,14 +7,14 @@ def get_configuration():
         'folder_path': '../../../sim_results/laces',
         'num_iterations': 10,
         'x_tick_interval': 1,
-        'scenario_types': ['RANDOM', 'NETWORK_BASED', 'UTILIZATION_BASED'],
-        'legends': ['RND', 'NW', 'UTIL'],
+        'scenario_types': ['RANDOM', 'NETWORK_BASED', 'UTILIZATION_BASED','LACES'],
+        'legends': ['RND', 'NW', 'UTIL', 'LACES'],
         'figure_position': [6, 3, 15, 15],  # [left, bottom, width, height] in centimeters
         'font_sizes': [13, 12, 12],  # [xy_label, legend, xy_axis_ticks]
         'x_axis_label': 'Number of Clients',
         'min_devices': 200,
         'step_devices': 200,
-        'max_devices': 2000,
+        'max_devices': 800,
         'use_scientific_notation_x_axis': False, # For future use
         'save_figure_as_pdf': True,
         'plot_confidence_interval': True,
