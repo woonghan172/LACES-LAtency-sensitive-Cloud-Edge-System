@@ -4,7 +4,7 @@
 %--------------------------------------------------------------
 function [ret_val] = getConfiguration(argType)
     if(argType == 1)
-        ret_val = '../../../sim_results/tutorial3';
+        ret_val = '../../../sim_results/laces';
     elseif(argType == 2)
         ret_val = 30; %simulation time (in minutes)
     elseif(argType == 3)

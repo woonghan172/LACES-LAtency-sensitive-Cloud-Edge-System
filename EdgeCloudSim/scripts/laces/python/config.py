@@ -4,7 +4,7 @@ def get_configuration():
     Equivalent to getConfiguration.m.
     """
     config = {
-        'folder_path': '../../../sim_results/tutorial3',
+        'folder_path': '../../../sim_results/laces',
         'num_iterations': 10,
         'x_tick_interval': 1,
         'scenario_types': ['RANDOM', 'NETWORK_BASED', 'UTILIZATION_BASED'],
