@@ -10,9 +10,9 @@ function [] = plotAvgFailedTask()
     plotGenericLine(2, 2, 'Failed Tasks on Edge for Health App (%)', 'HEALTH_APP', 'percentage_of_all', 'NorthWest');
     plotGenericLine(2, 2, 'Failed Tasks on Edge for Infotainment App (%)', 'INFOTAINMENT_APP', 'percentage_of_all', 'NorthWest');
 
-    plotGenericLine(3, 2, 'Failed Tasks= on Cloud (%)', 'ALL_APPS', 'percentage_of_all', 'NorthWest');
+    plotGenericLine(3, 2, 'Failed Tasks on Cloud (%)', 'ALL_APPS', 'percentage_of_all', 'NorthWest');
     plotGenericLine(3, 2, {'Failed Tasks on Cloud for';'Augmented Reality App (%)'}, 'AUGMENTED_REALITY', 'percentage_of_all', 'NorthWest');
-    plotGenericLine(3, 2, 'Fail ed Tasks on Cloud for Health App (%)', 'HEALTH_APP', 'percentage_of_all', 'NorthWest');
+    plotGenericLine(3, 2, 'Failed Tasks on Cloud for Health App (%)', 'HEALTH_APP', 'percentage_of_all', 'NorthWest');
     plotGenericLine(3, 2, 'Failed Tasks on Cloud for Infotainment App (%)', 'INFOTAINMENT_APP', 'percentage_of_all', 'NorthWest');
     
 end
