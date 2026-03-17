@@ -1,0 +1,23 @@
+# Git version control
+.git
+.gitignore
+
+# Compiled class files
+EdgeCloudSim/bin/
+
+# Simulation output (avoid bundling old results into the image)
+EdgeCloudSim/scripts/laces/output/
+EdgeCloudSim/scripts/*/output/
+
+# Temporary runner scripts
+EdgeCloudSim/scripts/laces/tmp_runner*
+
+# Log files
+*.log
+
+# macOS system files
+.DS_Store
+
+# Python cache
+__pycache__/
+*.pyc
