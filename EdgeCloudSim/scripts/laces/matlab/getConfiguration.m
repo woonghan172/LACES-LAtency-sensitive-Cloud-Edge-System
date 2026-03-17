@@ -12,9 +12,9 @@ function [ret_val] = getConfiguration(argType)
     elseif(argType == 4)
         ret_val = 1; %x tick interval for number of mobile devices
     elseif(argType == 5)
-        ret_val = {'RANDOM','NETWORK_BASED','UTILIZATION_BASED'};
+        ret_val = {'RANDOM','NETWORK_BASED','UTILIZATION_BASED','LACES'};
     elseif(argType == 6)
-        ret_val = {'rand','nw','util'};
+        ret_val = {'rand','nw','util','laces'};
     elseif(argType == 7)
         ret_val=[6 3 15 15]; %position of figure
     elseif(argType == 8)

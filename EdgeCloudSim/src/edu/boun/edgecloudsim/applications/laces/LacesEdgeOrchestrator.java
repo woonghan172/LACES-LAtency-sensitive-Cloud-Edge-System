@@ -33,6 +33,7 @@ import edu.boun.edgecloudsim.utils.SimUtils;
  * Responsibilities:
  * - Decide offloading target: cloud vs generic edge datacenter
  * - Policies:
+ * 	   LACES			  : Latency sensitive
  *     NETWORK_BASED      : prefer cloud if estimated uplink WAN BW > 5 Mbps
  *     UTILIZATION_BASED  : prefer cloud if overall edge utilization > 75%
  *     RANDOM             : 50/50 coin flip
@@ -101,6 +102,12 @@ public class LacesEdgeOrchestrator extends EdgeOrchestrator {
 				result = SimSettings.CLOUD_DATACENTER_ID;
 			else
 				result = SimSettings.GENERIC_EDGE_DEVICE_ID;
+		}
+		else if(policy.equals("LACES")){
+
+			/******************************/
+			/*  your implementation here  */
+			/******************************/
 		}
 		else {
 			// Unknown policy => configuration error
