@@ -317,12 +317,32 @@ public class LacesNetworkModel extends NetworkModel {
 
 	@Override
 	public void downloadStarted(Location accessPointLocation, int sourceDeviceId) {
-		// ...existing code...
+		// Mirror uploadStarted: increment contention counters based on source (server side)
+		if(sourceDeviceId == SimSettings.CLOUD_DATACENTER_ID)
+			wanClients[accessPointLocation.getServingWlanId()]++;
+		else if (sourceDeviceId == SimSettings.GENERIC_EDGE_DEVICE_ID)
+			wlanClients[accessPointLocation.getServingWlanId()]++;
+		else if (sourceDeviceId == SimSettings.GENERIC_EDGE_DEVICE_ID+1)
+			manClients++;
+		else {
+			SimLogger.printLine("Error - unknown device id in downloadStarted(). Terminating simulation...");
+			System.exit(0);
+		}
 	}
 
 	@Override
 	public void downloadFinished(Location accessPointLocation, int sourceDeviceId) {
-		// ...existing code...
+		// Mirror uploadFinished: decrement contention counters
+		if(sourceDeviceId == SimSettings.CLOUD_DATACENTER_ID)
+			wanClients[accessPointLocation.getServingWlanId()]--;
+		else if (sourceDeviceId == SimSettings.GENERIC_EDGE_DEVICE_ID)
+			wlanClients[accessPointLocation.getServingWlanId()]--;
+		else if (sourceDeviceId == SimSettings.GENERIC_EDGE_DEVICE_ID+1)
+			manClients--;
+		else {
+			SimLogger.printLine("Error - unknown device id in downloadFinished(). Terminating simulation...");
+			System.exit(0);
+		}
 	}
 
 	private double getWlanDownloadDelay(Location accessPointLocation, double dataSize) {

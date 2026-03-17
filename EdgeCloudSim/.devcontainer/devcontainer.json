@@ -1,6 +1,6 @@
 {
-  "name": "LACES Workspace",
-  "dockerFile": "../EdgeCloudSim/docker/Dockerfile",
+  "name": "LACES EdgeCloudSim",
+  "dockerFile": "../docker/Dockerfile",
   "context": "..",
   "workspaceFolder": "/workspace",
   "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind",
@@ -12,5 +12,6 @@
       ]
     }
   },
+  // Recompile after container starts (workspace is now a live bind-mount)
   "postStartCommand": "cd /workspace/EdgeCloudSim/scripts/laces && ./compile.sh"
 }

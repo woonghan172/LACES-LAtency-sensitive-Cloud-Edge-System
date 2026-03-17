@@ -104,10 +104,38 @@ public class LacesEdgeOrchestrator extends EdgeOrchestrator {
 				result = SimSettings.GENERIC_EDGE_DEVICE_ID;
 		}
 		else if(policy.equals("LACES")){
+			// --- LACES latency-aware placement policy ---
+			// Score each target on three factors, then pick the higher scorer.
 
-			/******************************/
-			/*  your implementation here  */
-			/******************************/
+			// Factor 1: edgeHeadroomScore — how free the edge is (1 = fully idle, 0 = fully loaded)
+			double edgeHeadroomScore = Math.max(0.0, 1.0 - (edgeUtilization / 100.0));
+
+			// Factor 2: delaySensitivity — from applications.xml delay_sensitivity field [0-1]
+			// Index 12 in taskLookUpTable = delay_sensitivity (see SimSettings mandatoryAttributes order)
+			double delaySensitivity = SimSettings.getInstance().getTaskLookUpTable()[task.getTaskType()][12];
+
+			// Factor 3: wanQualityScore — ratio of current WAN BW to "good" WAN BW threshold, capped at 1.0
+			final double WAN_GOOD_BW_MBPS = 5.0;
+			double wanQualityScore = Math.min(1.0, wanBW / WAN_GOOD_BW_MBPS);
+
+			// Factor 4: taskLengthScore — normalised task length; heavier tasks benefit more from cloud GPU
+			final double MAX_TASK_LENGTH_MI = 20000.0;
+			double taskLengthScore = Math.min(1.0, task.getCloudletLength() / MAX_TASK_LENGTH_MI);
+
+			// Composite scores (weights from design document)
+			double edgeScore =
+					0.50 * edgeHeadroomScore +
+					0.35 * delaySensitivity +
+					0.15 * (1.0 - wanQualityScore);
+
+			double cloudScore =
+					0.45 * wanQualityScore +
+					0.35 * (1.0 - edgeHeadroomScore) +
+					0.20 * taskLengthScore;
+
+			result = (cloudScore > edgeScore)
+					? SimSettings.CLOUD_DATACENTER_ID
+					: SimSettings.GENERIC_EDGE_DEVICE_ID;
 		}
 		else {
 			// Unknown policy => configuration error

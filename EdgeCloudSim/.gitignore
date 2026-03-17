@@ -36,7 +36,8 @@ out
 gen
 
 # VS Code
-.vscode/
+.vscode/*
+!.vscode/settings.json
 
 # ----------------------------
 # Python Specific

@@ -1,0 +1,10 @@
+{
+  "java.project.sourcePaths": [
+    "EdgeCloudSim/src",
+    "src"
+  ],
+  "java.project.referencedLibraries": [
+    "EdgeCloudSim/lib/**/*.jar",
+    "lib/**/*.jar"
+  ]
+}
