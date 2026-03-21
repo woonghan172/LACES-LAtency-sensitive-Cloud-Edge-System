@@ -65,10 +65,11 @@ public class LacesMobileDeviceManager extends MobileDeviceManager {
 	private static final int UPDATE_MM1_QUEUE_MODEL = BASE + 1; // periodic MAN queue parameter update
 	private static final int REQUEST_RECEIVED_BY_CLOUD = BASE + 2; // cloud received upload
 	private static final int REQUEST_RECEIVED_BY_EDGE_DEVICE = BASE + 3; // local edge received upload
-	private static final int REQUEST_RECEIVED_BY_REMOTE_EDGE_DEVICE = BASE + 4; // neighbor edge received relayed upload
-	private static final int REQUEST_RECEIVED_BY_EDGE_DEVICE_TO_RELAY_NEIGHBOR = BASE + 5; // local edge will forward to neighbor
-	private static final int RESPONSE_RECEIVED_BY_MOBILE_DEVICE = BASE + 6; // final result delivered to mobile
-	private static final int RESPONSE_RECEIVED_BY_EDGE_DEVICE_TO_RELAY_MOBILE_DEVICE = BASE + 7; // remote edge sending result back to origin edge for WLAN hop
+	private static final int REQUEST_RECEIVED_BY_MOBILE_DEVICE = BASE + 4; // local mobile processing path
+	private static final int REQUEST_RECEIVED_BY_REMOTE_EDGE_DEVICE = BASE + 5; // neighbor edge received relayed upload
+	private static final int REQUEST_RECEIVED_BY_EDGE_DEVICE_TO_RELAY_NEIGHBOR = BASE + 6; // local edge will forward to neighbor
+	private static final int RESPONSE_RECEIVED_BY_MOBILE_DEVICE = BASE + 7; // final result delivered to mobile
+	private static final int RESPONSE_RECEIVED_BY_EDGE_DEVICE_TO_RELAY_MOBILE_DEVICE = BASE + 8; // remote edge sending result back to origin edge for WLAN hop
 
 	private static final double MM1_QUEUE_MODEL_UPDATE_INTEVAL = 5; //seconds (periodic refresh for MAN queue)
 	
@@ -144,6 +145,10 @@ public class LacesMobileDeviceManager extends MobileDeviceManager {
 			{
 				SimLogger.getInstance().failedDueToBandwidth(task.getCloudletId(), CloudSim.clock(), NETWORK_DELAY_TYPES.WAN_DELAY);
 			}
+		}
+		else if(task.getAssociatedDatacenterId() == SimSettings.MOBILE_DATACENTER_ID){
+			// Local execution completed on device; no network download needed
+			SimLogger.getInstance().taskEnded(task.getCloudletId(), CloudSim.clock());
 		}
 		else{
 			// Edge result path:
@@ -229,6 +234,13 @@ public class LacesMobileDeviceManager extends MobileDeviceManager {
 				submitTaskToVm(task, SimSettings.VM_TYPES.EDGE_VM);
 				break;
 			}
+			case REQUEST_RECEIVED_BY_MOBILE_DEVICE:
+			{
+				// Local path has no network upload; submit directly to mobile VM
+				Task task = (Task) ev.getData();
+				submitTaskToVm(task, SimSettings.VM_TYPES.MOBILE_VM);
+				break;
+			}
 			case REQUEST_RECEIVED_BY_REMOTE_EDGE_DEVICE:
 			{
 				// MAN relay finished; submit at neighbor edge VM
@@ -299,8 +311,9 @@ public class LacesMobileDeviceManager extends MobileDeviceManager {
 				
 				if(task.getAssociatedDatacenterId() == SimSettings.CLOUD_DATACENTER_ID)
 					networkModel.downloadFinished(task.getSubmittedLocation(), SimSettings.CLOUD_DATACENTER_ID);
-				else
+				else if(task.getAssociatedDatacenterId() == SimSettings.GENERIC_EDGE_DEVICE_ID)
 					networkModel.downloadFinished(task.getSubmittedLocation(), SimSettings.GENERIC_EDGE_DEVICE_ID);
+				// Mobile path has no network download leg
 				
 				SimLogger.getInstance().taskEnded(task.getCloudletId(), CloudSim.clock());
 				break;
@@ -328,8 +341,8 @@ public class LacesMobileDeviceManager extends MobileDeviceManager {
 		
 		int vmType=0;
 		int nextEvent=0;
-		int nextDeviceForNetworkModel;
-		NETWORK_DELAY_TYPES delayType;
+		int nextDeviceForNetworkModel = SimSettings.GENERIC_EDGE_DEVICE_ID;
+		NETWORK_DELAY_TYPES delayType = NETWORK_DELAY_TYPES.WLAN_DELAY;
 		double delay=0;
 		
 		NetworkModel networkModel = SimManager.getInstance().getNetworkModel();
@@ -364,15 +377,26 @@ public class LacesMobileDeviceManager extends MobileDeviceManager {
 			delayType = NETWORK_DELAY_TYPES.WAN_DELAY;
 			nextDeviceForNetworkModel = SimSettings.CLOUD_DATACENTER_ID;
 		}
-		else {
+		else if(nextHopId == SimSettings.GENERIC_EDGE_DEVICE_ID) {
 			delay = networkModel.getUploadDelay(task.getMobileDeviceId(), SimSettings.GENERIC_EDGE_DEVICE_ID, task);
 			vmType = SimSettings.VM_TYPES.EDGE_VM.ordinal();
 			nextEvent = REQUEST_RECEIVED_BY_EDGE_DEVICE;
 			delayType = NETWORK_DELAY_TYPES.WLAN_DELAY;
 			nextDeviceForNetworkModel = SimSettings.GENERIC_EDGE_DEVICE_ID;
 		}
+		else if(nextHopId == SimSettings.MOBILE_DATACENTER_ID){
+			delay = 0;
+			vmType = SimSettings.VM_TYPES.MOBILE_VM.ordinal();
+			nextEvent = REQUEST_RECEIVED_BY_MOBILE_DEVICE;
+			delayType = null;
+			nextDeviceForNetworkModel = -1;
+		}
+		else {
+			SimLogger.printLine("Unknown nextHopId! The simulation has been terminated.");
+			System.exit(0);
+		}
 		
-		if(delay>0){
+		if(delay>0 || nextHopId == SimSettings.MOBILE_DATACENTER_ID){
 			
 			Vm selectedVM = SimManager.getInstance().getEdgeOrchestrator().getVmToOffload(task, nextHopId);
 			
@@ -400,10 +424,12 @@ public class LacesMobileDeviceManager extends MobileDeviceManager {
 						nextEvent = REQUEST_RECEIVED_BY_EDGE_DEVICE_TO_RELAY_NEIGHBOR;
 					}
 				}
-				networkModel.uploadStarted(currentLocation, nextDeviceForNetworkModel);
+				if(nextHopId != SimSettings.MOBILE_DATACENTER_ID)
+					networkModel.uploadStarted(currentLocation, nextDeviceForNetworkModel);
 				
 				SimLogger.getInstance().taskStarted(task.getCloudletId(), CloudSim.clock());
-				SimLogger.getInstance().setUploadDelay(task.getCloudletId(), delay, delayType);
+				if(nextHopId != SimSettings.MOBILE_DATACENTER_ID)
+					SimLogger.getInstance().setUploadDelay(task.getCloudletId(), delay, delayType);
 
 				schedule(getId(), delay, nextEvent, task);
 			}
@@ -415,7 +441,8 @@ public class LacesMobileDeviceManager extends MobileDeviceManager {
 		else
 		{
 			// Bandwidth rejection
-			SimLogger.getInstance().rejectedDueToBandwidth(task.getCloudletId(), CloudSim.clock(), vmType, delayType);
+			if(nextHopId != SimSettings.MOBILE_DATACENTER_ID)
+				SimLogger.getInstance().rejectedDueToBandwidth(task.getCloudletId(), CloudSim.clock(), vmType, delayType);
 		}
 	}
 	

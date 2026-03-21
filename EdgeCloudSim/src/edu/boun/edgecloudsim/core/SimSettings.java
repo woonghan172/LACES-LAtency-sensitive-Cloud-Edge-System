@@ -106,6 +106,9 @@ public class SimSettings {
 	// Simulation scenario and policy configuration
 	private String[] SIMULATION_SCENARIOS;
 	private String[] ORCHESTRATOR_POLICIES;
+	private double LACES_WEIGHT_LATENCY;
+	private double LACES_WEIGHT_COMPUTATION;
+	private double LACES_WEIGHT_DATA;
 
 	// Geographic simulation boundaries
 	private double NORTHERN_BOUND;
@@ -213,6 +216,10 @@ public class SimSettings {
 			STORAGE_FOR_VM = Integer.parseInt(prop.getProperty("storage_for_mobile_vm"));
 
 			ORCHESTRATOR_POLICIES = prop.getProperty("orchestrator_policies").split(",");
+
+			LACES_WEIGHT_LATENCY = Double.parseDouble(prop.getProperty("laces_weight_latency", "0.5"));
+			LACES_WEIGHT_COMPUTATION = Double.parseDouble(prop.getProperty("laces_weight_computation", "0.3"));
+			LACES_WEIGHT_DATA = Double.parseDouble(prop.getProperty("laces_weight_data", "0.2"));
 
 			SIMULATION_SCENARIOS = prop.getProperty("simulation_scenarios").split(",");
 
@@ -362,6 +369,30 @@ public class SimSettings {
 	public int getWanBandwidth()
 	{
 		return BANDWITH_WAN; 
+	}
+
+	/**
+	 * returns LACES latency weight from properties file
+	 */
+	public double getLacesWeightLatency()
+	{
+		return LACES_WEIGHT_LATENCY;
+	}
+
+	/**
+	 * returns LACES computation weight from properties file
+	 */
+	public double getLacesWeightComputation()
+	{
+		return LACES_WEIGHT_COMPUTATION;
+	}
+
+	/**
+	 * returns LACES data transfer weight from properties file
+	 */
+	public double getLacesWeightData()
+	{
+		return LACES_WEIGHT_DATA;
 	}
 
 	/**

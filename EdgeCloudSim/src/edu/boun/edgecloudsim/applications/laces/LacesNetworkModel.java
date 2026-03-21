@@ -195,12 +195,14 @@ public class LacesNetworkModel extends NetworkModel {
 
 		int numOfApp = SimSettings.getInstance().getTaskLookUpTable().length;
 		SimSettings SS = SimSettings.getInstance();
+		int activeAppCount = 0;
 		for(int taskIndex=0; taskIndex<numOfApp; taskIndex++) {
 			if(SS.getTaskLookUpTable()[taskIndex][0] == 0) {
-				SimLogger.printLine("Usage percentage of task " + taskIndex + " is 0! Terminating simulation...");
-				System.exit(0);
+				// Allow zero-usage task types for single-app experiments.
+				continue;
 			}
 			else{
+				activeAppCount++;
 				double weight = SS.getTaskLookUpTable()[taskIndex][0]/(double)100;
 				
 				//assume half of the tasks use the MAN at the beginning
@@ -210,6 +212,11 @@ public class LacesNetworkModel extends NetworkModel {
 				avgManTaskInputSize += SS.getTaskLookUpTable()[taskIndex][5]*weight;
 				avgManTaskOutputSize += SS.getTaskLookUpTable()[taskIndex][6]*weight;
 			}
+		}
+
+		if(activeAppCount == 0){
+			SimLogger.printLine("No active application found in applications.xml! Terminating simulation...");
+			System.exit(0);
 		}
 
 		ManPoissonMeanForDownload = ManPoissonMeanForDownload/numOfApp;

@@ -100,6 +100,17 @@ public class IdleActiveLoadGenerator extends LoadGeneratorModel{
 	@Override
 	public void initializeModel() {
 		taskList = new ArrayList<TaskProperty>();
+		double totalTaskTypePercentage = 0;
+		for (int i = 0; i < SimSettings.getInstance().getTaskLookUpTable().length; i++) {
+			double usagePercentage = SimSettings.getInstance().getTaskLookUpTable()[i][0];
+			if(usagePercentage > 0)
+				totalTaskTypePercentage += usagePercentage;
+		}
+
+		if(totalTaskTypePercentage <= 0){
+			SimLogger.printLine("Critical Error: total usage_percentage is zero! Terminating simulation...");
+			System.exit(0);
+		}
 		
 		// Create exponential distribution generators for task characteristics
 		// [task_type][0] = input size distribution, [1] = output size, [2] = task length
@@ -123,7 +134,7 @@ public class IdleActiveLoadGenerator extends LoadGeneratorModel{
 			int randomTaskType = -1;
 			
 			// Use weighted random selection based on task type probabilities
-			double taskTypeSelector = SimUtils.getRandomDoubleNumber(0, 100);
+			double taskTypeSelector = SimUtils.getRandomDoubleNumber(0, totalTaskTypePercentage);
 			double taskTypePercentage = 0;
 			
 			// Find the task type by cumulative probability distribution

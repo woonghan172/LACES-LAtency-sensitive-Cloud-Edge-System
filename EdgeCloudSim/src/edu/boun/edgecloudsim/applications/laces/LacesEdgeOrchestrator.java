@@ -26,6 +26,7 @@ import edu.boun.edgecloudsim.edge_orchestrator.EdgeOrchestrator;
 import edu.boun.edgecloudsim.edge_server.EdgeVM;
 import edu.boun.edgecloudsim.edge_client.CpuUtilizationModel_Custom;
 import edu.boun.edgecloudsim.edge_client.Task;
+import edu.boun.edgecloudsim.edge_client.mobile_processing_unit.MobileVM;
 import edu.boun.edgecloudsim.utils.SimLogger;
 import edu.boun.edgecloudsim.utils.SimUtils;
 
@@ -104,38 +105,100 @@ public class LacesEdgeOrchestrator extends EdgeOrchestrator {
 				result = SimSettings.GENERIC_EDGE_DEVICE_ID;
 		}
 		else if(policy.equals("LACES")){
-			// --- LACES latency-aware placement policy ---
-			// Score each target on three factors, then pick the higher scorer.
+			// LACES weighted-cost policy:
+			// score = w_latency*T_net + w_computation*T_processing + w_data*T_transmission
+			// lower score is better. Candidate targets: Device, Edge, Cloud.
 
-			// Factor 1: edgeHeadroomScore — how free the edge is (1 = fully idle, 0 = fully loaded)
-			double edgeHeadroomScore = Math.max(0.0, 1.0 - (edgeUtilization / 100.0));
+			Vm mobileVm = selectMobileVm(task);
+			Vm edgeVm = selectEdgeVm(task);
+			Vm cloudVm = selectCloudVm(task);
 
-			// Factor 2: delaySensitivity — from applications.xml delay_sensitivity field [0-1]
-			// Index 12 in taskLookUpTable = delay_sensitivity (see SimSettings mandatoryAttributes order)
-			double delaySensitivity = SimSettings.getInstance().getTaskLookUpTable()[task.getTaskType()][12];
+			Task netProbeTask = new Task(0, 0, 0, 0, 128, 128,
+					new UtilizationModelFull(), new UtilizationModelFull(), new UtilizationModelFull());
 
-			// Factor 3: wanQualityScore — ratio of current WAN BW to "good" WAN BW threshold, capped at 1.0
-			final double WAN_GOOD_BW_MBPS = 5.0;
-			double wanQualityScore = Math.min(1.0, wanBW / WAN_GOOD_BW_MBPS);
+			// User-requested latency mapping:
+			// - Device: no network latency
+			// - Edge: MAN latency probe
+			// - Cloud: WAN latency probe
+			double wanProbeDelay = SimManager.getInstance().getNetworkModel().getUploadDelay(
+					task.getMobileDeviceId(), SimSettings.CLOUD_DATACENTER_ID, netProbeTask);
+			double manDelay = SimManager.getInstance().getNetworkModel().getUploadDelay(
+					SimSettings.GENERIC_EDGE_DEVICE_ID, SimSettings.GENERIC_EDGE_DEVICE_ID, netProbeTask);
 
-			// Factor 4: taskLengthScore — normalised task length; heavier tasks benefit more from cloud GPU
-			final double MAX_TASK_LENGTH_MI = 20000.0;
-			double taskLengthScore = Math.min(1.0, task.getCloudletLength() / MAX_TASK_LENGTH_MI);
+			double payloadMbit = ((task.getCloudletFileSize() + task.getCloudletOutputSize()) * 8.0) / 1024.0;
+			double wanBwMbps = (wanProbeDelay > 0) ? (1.0 / wanProbeDelay) : 0.0;
+			double manBwMbps = (manDelay > 0) ? (1.0 / manDelay) : 0.0;
 
-			// Composite scores (weights from design document)
+			double tNetDevice = 0.0;
+			double tNetEdge = (manDelay > 0) ? manDelay : Double.MAX_VALUE;
+			double tNetCloud = (wanProbeDelay > 0) ? wanProbeDelay : Double.MAX_VALUE;
+
+			double tProcessingDevice = getProcessingCost(task, mobileVm);
+			double tProcessingEdge = getProcessingCost(task, edgeVm);
+			double tProcessingCloud = getProcessingCost(task, cloudVm);
+
+			double tTransmissionDevice = 0.0;
+			double tTransmissionEdge = (manBwMbps > 0) ? (payloadMbit / manBwMbps) : Double.MAX_VALUE;
+			double tTransmissionCloud = (wanBwMbps > 0) ? (payloadMbit / wanBwMbps) : Double.MAX_VALUE;
+
+			double wLatency = SimSettings.getInstance().getLacesWeightLatency();
+			double wComputation = SimSettings.getInstance().getLacesWeightComputation();
+			double wData = SimSettings.getInstance().getLacesWeightData();
+			double weightSum = wLatency + wComputation + wData;
+			if(weightSum <= 0){
+				wLatency = 1.0;
+				wComputation = 0.0;
+				wData = 0.0;
+				weightSum = 1.0;
+			}
+			wLatency /= weightSum;
+			wComputation /= weightSum;
+			wData /= weightSum;
+
+			double deviceScore =
+					(wLatency * tNetDevice) +
+					(wComputation * tProcessingDevice) +
+					(wData * tTransmissionDevice);
+
 			double edgeScore =
-					0.50 * edgeHeadroomScore +
-					0.35 * delaySensitivity +
-					0.15 * (1.0 - wanQualityScore);
+					(wLatency * tNetEdge) +
+					(wComputation * tProcessingEdge) +
+					(wData * tTransmissionEdge);
 
 			double cloudScore =
-					0.45 * wanQualityScore +
-					0.35 * (1.0 - edgeHeadroomScore) +
-					0.20 * taskLengthScore;
+					(wLatency * tNetCloud) +
+					(wComputation * tProcessingCloud) +
+					(wData * tTransmissionCloud);
 
-			result = (cloudScore > edgeScore)
-					? SimSettings.CLOUD_DATACENTER_ID
-					: SimSettings.GENERIC_EDGE_DEVICE_ID;
+			// Guard feasibility: if target VM is not available, force score to +inf.
+			if(mobileVm == null)
+				deviceScore = Double.POSITIVE_INFINITY;
+			if(edgeVm == null)
+				edgeScore = Double.POSITIVE_INFINITY;
+			if(cloudVm == null)
+				cloudScore = Double.POSITIVE_INFINITY;
+
+			if(Double.isInfinite(deviceScore) && Double.isInfinite(edgeScore) && Double.isInfinite(cloudScore)) {
+				if(mobileVm != null)
+					result = SimSettings.MOBILE_DATACENTER_ID;
+				else if(edgeVm != null)
+					result = SimSettings.GENERIC_EDGE_DEVICE_ID;
+				else
+					result = SimSettings.CLOUD_DATACENTER_ID;
+			}
+			else {
+				result = SimSettings.MOBILE_DATACENTER_ID;
+				double bestScore = deviceScore;
+
+				if(edgeScore < bestScore){
+					bestScore = edgeScore;
+					result = SimSettings.GENERIC_EDGE_DEVICE_ID;
+				}
+
+				if(cloudScore < bestScore){
+					result = SimSettings.CLOUD_DATACENTER_ID;
+				}
+			}
 		}
 		else {
 			// Unknown policy => configuration error
@@ -150,42 +213,15 @@ public class LacesEdgeOrchestrator extends EdgeOrchestrator {
 	public Vm getVmToOffload(Task task, int deviceId) {
 		// Select VM with maximum residual capacity that can host predicted load (Least Loaded / WORST FIT)
 		Vm selectedVM = null;
-		
-		if(deviceId == SimSettings.CLOUD_DATACENTER_ID){
-			// Iterate all cloud hosts and VMs
-			// Select VM on cloud devices via Least Loaded algorithm!
-			double selectedVmCapacity = 0; //start with min value
-			List<Host> list = SimManager.getInstance().getCloudServerManager().getDatacenter().getHostList();
-			for (int hostIndex=0; hostIndex < list.size(); hostIndex++) {
-				List<CloudVM> vmArray = SimManager.getInstance().getCloudServerManager().getVmList(hostIndex);
-				for(int vmIndex=0; vmIndex<vmArray.size(); vmIndex++){
-					// requiredCapacity: predicted CPU% for this VM type
-					// targetVmCapacity: current free CPU% on the VM
-					// Accept and update best if residual capacity larger
-					double requiredCapacity = ((CpuUtilizationModel_Custom)task.getUtilizationModelCpu()).predictUtilization(vmArray.get(vmIndex).getVmType());
-					double targetVmCapacity = (double)100 - vmArray.get(vmIndex).getCloudletScheduler().getTotalUtilizationOfCpu(CloudSim.clock());
-					if(requiredCapacity <= targetVmCapacity && targetVmCapacity > selectedVmCapacity){
-						selectedVM = vmArray.get(vmIndex);
-						selectedVmCapacity = targetVmCapacity;
-					}
-	            }
-			}
+
+		if(deviceId == SimSettings.MOBILE_DATACENTER_ID){
+			selectedVM = selectMobileVm(task);
+		}
+		else if(deviceId == SimSettings.CLOUD_DATACENTER_ID){
+			selectedVM = selectCloudVm(task);
 		}
 		else if(deviceId == SimSettings.GENERIC_EDGE_DEVICE_ID){
-			// Iterate all edge hosts and their VMs similarly
-			//Select VM on edge devices via Least Loaded algorithm!
-			double selectedVmCapacity = 0; //start with min value
-			for(int hostIndex=0; hostIndex<numberOfHost; hostIndex++){
-				List<EdgeVM> vmArray = SimManager.getInstance().getEdgeServerManager().getVmList(hostIndex);
-				for(int vmIndex=0; vmIndex<vmArray.size(); vmIndex++){
-					double requiredCapacity = ((CpuUtilizationModel_Custom)task.getUtilizationModelCpu()).predictUtilization(vmArray.get(vmIndex).getVmType());
-					double targetVmCapacity = (double)100 - vmArray.get(vmIndex).getCloudletScheduler().getTotalUtilizationOfCpu(CloudSim.clock());
-					if(requiredCapacity <= targetVmCapacity && targetVmCapacity > selectedVmCapacity){
-						selectedVM = vmArray.get(vmIndex);
-						selectedVmCapacity = targetVmCapacity;
-					}
-				}
-			}
+			selectedVM = selectEdgeVm(task);
 		}
 		else{
 			// Defensive: unexpected device id
@@ -212,6 +248,85 @@ public class LacesEdgeOrchestrator extends EdgeOrchestrator {
 	public void startEntity() {
 		// No startup scheduling needed
 		// Nothing to do!
+	}
+
+	private Vm selectMobileVm(Task task){
+		// If mobile processing is disabled in config, do not consider device target.
+		if(SimSettings.getInstance().getCoreForMobileVM() <= 0 || SimSettings.getInstance().getMipsForMobileVM() <= 0)
+			return null;
+
+		List<MobileVM> vmArray = SimManager.getInstance().getMobileServerManager().getVmList(task.getMobileDeviceId());
+		if(vmArray == null || vmArray.isEmpty())
+			return null;
+
+		MobileVM vm = vmArray.get(0);
+		double requiredCapacity = ((CpuUtilizationModel_Custom)task.getUtilizationModelCpu()).predictUtilization(vm.getVmType());
+		double targetVmCapacity = (double)100 - vm.getCloudletScheduler().getTotalUtilizationOfCpu(CloudSim.clock());
+		if(requiredCapacity <= targetVmCapacity)
+			return vm;
+
+		return null;
+	}
+
+	private Vm selectCloudVm(Task task){
+		Vm selectedVM = null;
+		double selectedVmCapacity = 0;
+
+		List<Host> list = SimManager.getInstance().getCloudServerManager().getDatacenter().getHostList();
+		for (int hostIndex=0; hostIndex < list.size(); hostIndex++) {
+			List<CloudVM> vmArray = SimManager.getInstance().getCloudServerManager().getVmList(hostIndex);
+			for(int vmIndex=0; vmIndex<vmArray.size(); vmIndex++){
+				double requiredCapacity = ((CpuUtilizationModel_Custom)task.getUtilizationModelCpu()).predictUtilization(vmArray.get(vmIndex).getVmType());
+				double targetVmCapacity = (double)100 - vmArray.get(vmIndex).getCloudletScheduler().getTotalUtilizationOfCpu(CloudSim.clock());
+				if(requiredCapacity <= targetVmCapacity && targetVmCapacity > selectedVmCapacity){
+					selectedVM = vmArray.get(vmIndex);
+					selectedVmCapacity = targetVmCapacity;
+				}
+			}
+		}
+
+		return selectedVM;
+	}
+
+	private Vm selectEdgeVm(Task task){
+		Vm selectedVM = null;
+		double selectedVmCapacity = 0;
+
+		for(int hostIndex=0; hostIndex<numberOfHost; hostIndex++){
+			List<EdgeVM> vmArray = SimManager.getInstance().getEdgeServerManager().getVmList(hostIndex);
+			for(int vmIndex=0; vmIndex<vmArray.size(); vmIndex++){
+				double requiredCapacity = ((CpuUtilizationModel_Custom)task.getUtilizationModelCpu()).predictUtilization(vmArray.get(vmIndex).getVmType());
+				double targetVmCapacity = (double)100 - vmArray.get(vmIndex).getCloudletScheduler().getTotalUtilizationOfCpu(CloudSim.clock());
+				if(requiredCapacity <= targetVmCapacity && targetVmCapacity > selectedVmCapacity){
+					selectedVM = vmArray.get(vmIndex);
+					selectedVmCapacity = targetVmCapacity;
+				}
+			}
+		}
+
+		return selectedVM;
+	}
+
+	private double getProcessingCost(Task task, Vm vm){
+		if(vm == null)
+			return Double.MAX_VALUE;
+
+		SimSettings.VM_TYPES vmType;
+		if(vm instanceof EdgeVM)
+			vmType = ((EdgeVM)vm).getVmType();
+		else if(vm instanceof CloudVM)
+			vmType = ((CloudVM)vm).getVmType();
+		else if(vm instanceof MobileVM)
+			vmType = ((MobileVM)vm).getVmType();
+		else
+			return Double.MAX_VALUE;
+
+		double requiredCapacity = ((CpuUtilizationModel_Custom)task.getUtilizationModelCpu()).predictUtilization(vmType);
+		double targetVmCapacity = (double)100 - vm.getCloudletScheduler().getTotalUtilizationOfCpu(CloudSim.clock());
+		if(targetVmCapacity <= 0)
+			return Double.MAX_VALUE;
+
+		return requiredCapacity / targetVmCapacity;
 	}
 
 }

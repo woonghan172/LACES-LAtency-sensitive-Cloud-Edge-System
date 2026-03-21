@@ -952,20 +952,23 @@ public class SimLogger {
 				}
 				else {
 					printLine(SimSettings.getInstance().getTaskName(i));
-					printLine("# of tasks (Edge/Cloud): "
+					printLine("# of tasks (Edge/Cloud/Mobile): "
 							+ (failedTask[i] + completedTask[i]) + "("
 							+ (failedTaskOnEdge[i] + completedTaskOnEdge[i]) + "/" 
-							+ (failedTaskOnCloud[i]+ completedTaskOnCloud[i]) + ")" );
+							+ (failedTaskOnCloud[i]+ completedTaskOnCloud[i]) + "/"
+							+ (failedTaskOnMobile[i] + completedTaskOnMobile[i]) + ")" );
 					
-					printLine("# of failed tasks (Edge/Cloud): "
+					printLine("# of failed tasks (Edge/Cloud/Mobile): "
 							+ failedTask[i] + "("
 							+ failedTaskOnEdge[i] + "/"
-							+ failedTaskOnCloud[i] + ")");
+							+ failedTaskOnCloud[i] + "/"
+							+ failedTaskOnMobile[i] + ")");
 					
-					printLine("# of completed tasks (Edge/Cloud): "
+					printLine("# of completed tasks (Edge/Cloud/Mobile): "
 							+ completedTask[i] + "("
 							+ completedTaskOnEdge[i] + "/"
-							+ completedTaskOnCloud[i] + ")");
+							+ completedTaskOnCloud[i] + "/"
+							+ completedTaskOnMobile[i] + ")");
 					
 					printLine("---------------------------------------");
 				}
