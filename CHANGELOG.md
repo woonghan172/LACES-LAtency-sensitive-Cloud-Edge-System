@@ -1,5 +1,28 @@
 # LACES Project Changelog
 
+## 2026-03-21 (run record)
+
+### Health app weight sweep command executed successfully
+
+**Working directory:**
+- `/workspace/EdgeCloudSim/scripts/laces`
+
+**Command:**
+
+```bash
+cd /workspace/EdgeCloudSim/scripts/laces
+python3 python/run_weight_sweep.py --app health --step 0.05 --iterations 3 --compile
+```
+
+**Result:**
+- Exit code: `0` (success)
+- Output run folder created under:
+    - `output/weight_tuning/health/20260321_132406/`
+- Generated per-iteration metrics file:
+    - `output/weight_tuning/health/20260321_132406/metrics_per_iteration.csv`
+
+This run is a valid health-only sweep snapshot for step `0.05` with `3` iterations per weight combination.
+
 ---
 
 ## 2026-03-21
