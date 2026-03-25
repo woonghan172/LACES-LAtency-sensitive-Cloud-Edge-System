@@ -14,6 +14,7 @@
 		<vm_utilization_on_edge>6</vm_utilization_on_edge>
 		<vm_utilization_on_cloud>0.6</vm_utilization_on_cloud>
 		<vm_utilization_on_mobile>24</vm_utilization_on_mobile>
+		<app_id>1</app_id>
 	</application>
 	<application name="HEALTH_APP">
 		<usage_percentage>20</usage_percentage>
@@ -29,6 +30,7 @@
 		<vm_utilization_on_edge>2</vm_utilization_on_edge>
 		<vm_utilization_on_cloud>0.2</vm_utilization_on_cloud>
 		<vm_utilization_on_mobile>8</vm_utilization_on_mobile>
+		<app_id>2</app_id>
 	</application>
 	<!-- <application name="HEAVY_COMP_APP">
 		<usage_percentage>20</usage_percentage>
@@ -59,5 +61,6 @@
 		<vm_utilization_on_edge>10</vm_utilization_on_edge>
 		<vm_utilization_on_cloud>1</vm_utilization_on_cloud>
 		<vm_utilization_on_mobile>40</vm_utilization_on_mobile>
+		<app_id>3</app_id>
 	</application>
 </applications>

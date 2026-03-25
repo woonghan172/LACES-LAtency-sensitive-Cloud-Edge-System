@@ -157,6 +157,73 @@ def write_csv(path: Path, rows: Iterable[Dict[str, object]], fieldnames: List[st
             writer.writerow(row)
 
 
+def find_best_weight_combinations(metric_rows: List[Dict[str, object]]) -> Dict[str, object]:
+    """
+    Analyze metrics to find the best weight combinations.
+    Criteria: sum of mean(service_time) + mean(failed_task) is lowest.
+    
+    Returns a dict containing the best combination and analysis details.
+    """
+    from collections import defaultdict
+    
+    # Group metrics by weight combination
+    weight_groups: Dict[Tuple[str, str, str], List[Dict[str, float]]] = defaultdict(list)
+    
+    for row in metric_rows:
+        w1 = row["w1"]
+        w2 = row["w2"]
+        w3 = row["w3"]
+        
+        # Parse numeric values, handling empty strings
+        service_time = row.get("service_time", "")
+        failed_task = row.get("failed_task", "")
+        
+        try:
+            st_val = float(service_time) if service_time and str(service_time).strip() else float("nan")
+            ft_val = float(failed_task) if failed_task and str(failed_task).strip() else float("nan")
+        except (ValueError, TypeError):
+            continue
+        
+        weight_groups[(w1, w2, w3)].append({
+            "service_time": st_val,
+            "failed_task": ft_val,
+        })
+    
+    # Calculate statistics for each weight combination
+    best_results = []
+    
+    for (w1, w2, w3), metrics in weight_groups.items():
+        service_times = [m["service_time"] for m in metrics if not (isinstance(m["service_time"], float) and m["service_time"] != m["service_time"])]
+        failed_tasks = [m["failed_task"] for m in metrics if not (isinstance(m["failed_task"], float) and m["failed_task"] != m["failed_task"])]
+        
+        if service_times and failed_tasks:
+            mean_service_time = sum(service_times) / len(service_times)
+            mean_failed_task = sum(failed_tasks) / len(failed_tasks)
+            combined_score = mean_service_time + mean_failed_task
+            
+            best_results.append({
+                "w1": float(w1),
+                "w2": float(w2),
+                "w3": float(w3),
+                "mean_service_time": round(mean_service_time, 4),
+                "mean_failed_task": round(mean_failed_task, 4),
+                "combined_score": round(combined_score, 4),
+                "sample_count": len(metrics),
+            })
+    
+    # Sort by combined score (ascending) to get best at top
+    best_results.sort(key=lambda x: x["combined_score"])
+    
+    result = {
+        "total_weight_combinations": len(weight_groups),
+        "best_combination": best_results[0] if best_results else None,
+        "top_5_combinations": best_results[:5],
+        "analysis_notes": "Lower combined_score is better. Score = mean(service_time) + mean(failed_task)",
+    }
+    
+    return result
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run LACES weight sweep with semantic output folders")
     parser.add_argument("--project-root", default="../../..", help="Path from python/ to EdgeCloudSim root")
@@ -319,6 +386,13 @@ def main() -> None:
     )
 
     print(f"Saved metrics: {metrics_csv}")
+
+    # Analyze and save best weight combinations
+    best_combos = find_best_weight_combinations(metric_rows)
+    best_combos_json = app_root / "best_combinations.json"
+    best_combos_json.write_text(json.dumps(best_combos, indent=2), encoding="utf-8")
+    print(f"Saved best combinations: {best_combos_json}")
+
     print("Done.")
 
 
