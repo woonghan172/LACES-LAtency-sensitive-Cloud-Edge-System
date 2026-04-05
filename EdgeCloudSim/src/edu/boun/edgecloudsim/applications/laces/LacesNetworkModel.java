@@ -29,13 +29,12 @@ import edu.boun.edgecloudsim.utils.SimLogger;
 public class LacesNetworkModel extends NetworkModel {
 	public static enum NETWORK_TYPE {WLAN, LAN};
 	public static enum LINK_TYPE {DOWNLOAD, UPLOAD};
-	public static double MAN_BW = 1300*1024; //Kbps effective MAN bandwidth (shared)
 
 	@SuppressWarnings("unused")
 	private int manClients; // concurrent MAN relay sessions (aggregate)
 	private int[] wanClients;
 	private int[] wlanClients;
-	
+
 	private double lastMM1QueueUpdateTime; // last time we reset MAN statistics
 	private double ManPoissonMeanForDownload; // average inter-arrival (s) for MAN downloads (adaptive)
 	private double ManPoissonMeanForUpload;   // average inter-arrival (s) for MAN uploads (adaptive)
@@ -48,137 +47,169 @@ public class LacesNetworkModel extends NetworkModel {
 	private double totalManTaskOutputSize;    // cumulative output KB this window
 	private double numOfManTaskForDownload;   // download task count this window
 	private double numOfManTaskForUpload;     // upload task count this window
-	
-	public static final double[] experimentalWlanDelay = {
-		/*1 Client*/ 88040.279 /*(Kbps)*/,
-		/*2 Clients*/ 45150.982 /*(Kbps)*/,
-		/*3 Clients*/ 30303.641 /*(Kbps)*/,
-		/*4 Clients*/ 27617.211 /*(Kbps)*/,
-		/*5 Clients*/ 24868.616 /*(Kbps)*/,
-		/*6 Clients*/ 22242.296 /*(Kbps)*/,
-		/*7 Clients*/ 20524.064 /*(Kbps)*/,
-		/*8 Clients*/ 18744.889 /*(Kbps)*/,
-		/*9 Clients*/ 17058.827 /*(Kbps)*/,
-		/*10 Clients*/ 15690.455 /*(Kbps)*/,
-		/*11 Clients*/ 14127.744 /*(Kbps)*/,
-		/*12 Clients*/ 13522.408 /*(Kbps)*/,
-		/*13 Clients*/ 13177.631 /*(Kbps)*/,
-		/*14 Clients*/ 12811.330 /*(Kbps)*/,
-		/*15 Clients*/ 12584.387 /*(Kbps)*/,
-		/*15 Clients*/ 12135.161 /*(Kbps)*/,
-		/*16 Clients*/ 11705.638 /*(Kbps)*/,
-		/*17 Clients*/ 11276.116 /*(Kbps)*/,
-		/*18 Clients*/ 10846.594 /*(Kbps)*/,
-		/*19 Clients*/ 10417.071 /*(Kbps)*/,
-		/*20 Clients*/ 9987.549 /*(Kbps)*/,
-		/*21 Clients*/ 9367.587 /*(Kbps)*/,
-		/*22 Clients*/ 8747.625 /*(Kbps)*/,
-		/*23 Clients*/ 8127.663 /*(Kbps)*/,
-		/*24 Clients*/ 7907.701 /*(Kbps)*/,
-		/*25 Clients*/ 7887.739 /*(Kbps)*/,
-		/*26 Clients*/ 7690.831 /*(Kbps)*/,
-		/*27 Clients*/ 7393.922 /*(Kbps)*/,
-		/*28 Clients*/ 7297.014 /*(Kbps)*/,
-		/*29 Clients*/ 7100.106 /*(Kbps)*/,
-		/*30 Clients*/ 6903.197 /*(Kbps)*/,
-		/*31 Clients*/ 6701.986 /*(Kbps)*/,
-		/*32 Clients*/ 6500.776 /*(Kbps)*/,
-		/*33 Clients*/ 6399.565 /*(Kbps)*/,
-		/*34 Clients*/ 6098.354 /*(Kbps)*/,
-		/*35 Clients*/ 5897.143 /*(Kbps)*/,
-		/*36 Clients*/ 5552.127 /*(Kbps)*/,
-		/*37 Clients*/ 5207.111 /*(Kbps)*/,
-		/*38 Clients*/ 4862.096 /*(Kbps)*/,
-		/*39 Clients*/ 4517.080 /*(Kbps)*/,
-		/*40 Clients*/ 4172.064 /*(Kbps)*/,
-		/*41 Clients*/ 4092.922 /*(Kbps)*/,
-		/*42 Clients*/ 4013.781 /*(Kbps)*/,
-		/*43 Clients*/ 3934.639 /*(Kbps)*/,
-		/*44 Clients*/ 3855.498 /*(Kbps)*/,
-		/*45 Clients*/ 3776.356 /*(Kbps)*/,
-		/*46 Clients*/ 3697.215 /*(Kbps)*/,
-		/*47 Clients*/ 3618.073 /*(Kbps)*/,
-		/*48 Clients*/ 3538.932 /*(Kbps)*/,
-		/*49 Clients*/ 3459.790 /*(Kbps)*/,
-		/*50 Clients*/ 3380.649 /*(Kbps)*/,
-		/*51 Clients*/ 3274.611 /*(Kbps)*/,
-		/*52 Clients*/ 3168.573 /*(Kbps)*/,
-		/*53 Clients*/ 3062.536 /*(Kbps)*/,
-		/*54 Clients*/ 2956.498 /*(Kbps)*/,
-		/*55 Clients*/ 2850.461 /*(Kbps)*/,
-		/*56 Clients*/ 2744.423 /*(Kbps)*/,
-		/*57 Clients*/ 2638.386 /*(Kbps)*/,
-		/*58 Clients*/ 2532.348 /*(Kbps)*/,
-		/*59 Clients*/ 2426.310 /*(Kbps)*/,
-		/*60 Clients*/ 2320.273 /*(Kbps)*/,
-		/*61 Clients*/ 2283.828 /*(Kbps)*/,
-		/*62 Clients*/ 2247.383 /*(Kbps)*/,
-		/*63 Clients*/ 2210.939 /*(Kbps)*/,
-		/*64 Clients*/ 2174.494 /*(Kbps)*/,
-		/*65 Clients*/ 2138.049 /*(Kbps)*/,
-		/*66 Clients*/ 2101.604 /*(Kbps)*/,
-		/*67 Clients*/ 2065.160 /*(Kbps)*/,
-		/*68 Clients*/ 2028.715 /*(Kbps)*/,
-		/*69 Clients*/ 1992.270 /*(Kbps)*/,
-		/*70 Clients*/ 1955.825 /*(Kbps)*/,
-		/*71 Clients*/ 1946.788 /*(Kbps)*/,
-		/*72 Clients*/ 1937.751 /*(Kbps)*/,
-		/*73 Clients*/ 1928.714 /*(Kbps)*/,
-		/*74 Clients*/ 1919.677 /*(Kbps)*/,
-		/*75 Clients*/ 1910.640 /*(Kbps)*/,
-		/*76 Clients*/ 1901.603 /*(Kbps)*/,
-		/*77 Clients*/ 1892.566 /*(Kbps)*/,
-		/*78 Clients*/ 1883.529 /*(Kbps)*/,
-		/*79 Clients*/ 1874.492 /*(Kbps)*/,
-		/*80 Clients*/ 1865.455 /*(Kbps)*/,
-		/*81 Clients*/ 1833.185 /*(Kbps)*/,
-		/*82 Clients*/ 1800.915 /*(Kbps)*/,
-		/*83 Clients*/ 1768.645 /*(Kbps)*/,
-		/*84 Clients*/ 1736.375 /*(Kbps)*/,
-		/*85 Clients*/ 1704.106 /*(Kbps)*/,
-		/*86 Clients*/ 1671.836 /*(Kbps)*/,
-		/*87 Clients*/ 1639.566 /*(Kbps)*/,
-		/*88 Clients*/ 1607.296 /*(Kbps)*/,
-		/*89 Clients*/ 1575.026 /*(Kbps)*/,
-		/*90 Clients*/ 1542.756 /*(Kbps)*/,
-		/*91 Clients*/ 1538.544 /*(Kbps)*/,
-		/*92 Clients*/ 1534.331 /*(Kbps)*/,
-		/*93 Clients*/ 1530.119 /*(Kbps)*/,
-		/*94 Clients*/ 1525.906 /*(Kbps)*/,
-		/*95 Clients*/ 1521.694 /*(Kbps)*/,
-		/*96 Clients*/ 1517.481 /*(Kbps)*/,
-		/*97 Clients*/ 1513.269 /*(Kbps)*/,
-		/*98 Clients*/ 1509.056 /*(Kbps)*/,
-		/*99 Clients*/ 1504.844 /*(Kbps)*/,
-		/*100 Clients*/ 1500.631 /*(Kbps)*/
+
+	// Updated for US 2026 Context: 1Gbps Metropolitan Fiber Backhaul
+	public static double MAN_BW = 1000 * 1024 * 1024; // 1,048,576,000 bps
+
+
+	/*
+	This array reflects the performance of a high-end US router (802.11ax or 802.11be).
+
+	Baseline (1 Client): Set to 850,000.0 Kbps (~850 Mbps). This represents the real-world high-end throughput of a Wi-Fi 6 router in a US residential or office setting.
+
+	Initial Scaling (2–10 Clients): The values drop sharply ($1/N$ curve) because even modern Wi-Fi must divide the available airtime among active clients. For example, 2 clients get ~430 Mbps each, and 10 clients get ~105 Mbps each.
+
+	Congestion Management (11–100 Clients): Unlike older standards (802.11n), Wi-Fi 6 uses OFDMA (Orthogonal Frequency Division Multiple Access), which allows the router to talk to multiple clients simultaneously.
+
+	The Curve: Because of OFDMA, the "drop-off" slows down as you reach higher client counts. Instead of the speed crashing to zero, it levels off to around 14-15 Mbps per client at the 100-user mark, ensuring basic connectivity even under heavy load.
+	*/
+    public static final double[] experimentalWlanDelay = {
+		/*1 clients*/   850000.0 /*(Kbps)*/,
+		/*2 clients*/   430000.0,
+		/*3 clients*/   290000.0,
+		/*4 clients*/   220000.0,
+		/*5 clients*/   185000.0,
+		/*6 clients*/   160000.0,
+		/*7 clients*/   140000.0,
+		/*8 clients*/   125000.0,
+		/*9 clients*/   115000.0,
+		/*10 clients*/  105000.0,
+		/*11 clients*/  98000.0,
+		/*12 clients*/  92000.0,
+		/*13 clients*/  87000.0,
+		/*14 clients*/  82000.0,
+		/*15 clients*/  78000.0,
+		/*16 clients*/  74000.0,
+		/*17 clients*/  71000.0,
+		/*18 clients*/  68000.0,
+		/*19 clients*/  65000.0,
+		/*20 clients*/  62000.0,
+		/*21 clients*/  60000.0,
+		/*22 clients*/  58000.0,
+		/*23 clients*/  56000.0,
+		/*24 clients*/  54000.0,
+		/*25 clients*/  52000.0,
+		/*26 clients*/  50000.0,
+		/*27 clients*/  48500.0,
+		/*28 clients*/  47000.0,
+		/*29 clients*/  45500.0,
+		/*30 clients*/  44000.0,
+		/*31 clients*/  43000.0,
+		/*32 clients*/  42000.0,
+		/*33 clients*/  41000.0,
+		/*34 clients*/  40000.0,
+		/*35 clients*/  39000.0,
+		/*36 clients*/  38000.0,
+		/*37 clients*/  37000.0,
+		/*38 clients*/  36500.0,
+		/*39 clients*/  36000.0,
+		/*40 clients*/  35500.0,
+		/*41 clients*/  35000.0,
+		/*42 clients*/  34500.0,
+		/*43 clients*/  34000.0,
+		/*44 clients*/  33500.0,
+		/*45 clients*/  33000.0,
+		/*46 clients*/  32500.0,
+		/*47 clients*/  32000.0,
+		/*48 clients*/  31500.0,
+		/*49 clients*/  31000.0,
+		/*50 clients*/  30500.0,
+		/*51 clients*/  30000.0,
+		/*52 clients*/  29500.0,
+		/*53 clients*/  29000.0,
+		/*54 clients*/  28500.0,
+		/*55 clients*/  28000.0,
+		/*56 clients*/  27500.0,
+		/*57 clients*/  27000.0,
+		/*58 clients*/  26500.0,
+		/*59 clients*/  26000.0,
+		/*60 clients*/  25500.0,
+		/*61 clients*/  25000.0,
+		/*62 clients*/  24500.0,
+		/*63 clients*/  24000.0,
+		/*64 clients*/  23500.0,
+		/*65 clients*/  23000.0,
+		/*66 clients*/  22500.0,
+		/*67 clients*/  22000.0,
+		/*68 clients*/  21500.0,
+		/*69 clients*/  21000.0,
+		/*70 clients*/  20500.0,
+		/*71 clients*/  20000.0,
+		/*72 clients*/  19800.0,
+		/*73 clients*/  19600.0,
+		/*74 clients*/  19400.0,
+		/*75 clients*/  19200.0,
+		/*76 clients*/  19000.0,
+		/*77 clients*/  18800.0,
+		/*78 clients*/  18600.0,
+		/*79 clients*/  18400.0,
+		/*80 clients*/  18200.0,
+		/*81 clients*/  18000.0,
+		/*82 clients*/  17800.0,
+		/*83 clients*/  17600.0,
+		/*84 clients*/  17400.0,
+		/*85 clients*/  17200.0,
+		/*86 clients*/  17000.0,
+		/*87 clients*/  16800.0,
+		/*88 clients*/  16600.0,
+		/*89 clients*/  16400.0,
+		/*90 clients*/  16200.0,
+		/*91 clients*/  16000.0,
+		/*92 clients*/  15800.0,
+		/*93 clients*/  15600.0,
+		/*94 clients*/  15400.0,
+		/*95 clients*/  15200.0,
+		/*96 clients*/  15000.0,
+		/*97 clients*/  14800.0,
+		/*98 clients*/  14600.0,
+		/*99 clients*/  14400.0,
+		/*100 clients*/ 14200.0
 	};
 	
+	// WAN: US Median Broadband (Kbps)
+	// Source: Ookla/FCC 2026 Benchmarks (308 Mbps Median)
+
+	/*
+	This array reflects the sharing of a standard US "last-mile" internet connection (Fiber or high-speed Cable).
+
+	Baseline (1 Client): Set to 315,496.0 Kbps (~308-315 Mbps). This matches the 2026 US median fixed broadband download speed.
+
+	Linear Degradation (1–25 Clients): Since a household or small office WAN pipe has a fixed capacity (e.g., 300 Mbps), the values follow a strictly competitive model:
+
+	2 Clients: Each gets roughly half (~160 Mbps).
+
+	5 Clients: Each gets ~70 Mbps.
+
+	25 Clients: Each gets ~15 Mbps.
+
+	Lower Bound: The 25th client is set at 15,000 Kbps (15 Mbps), which is the minimum threshold often considered "functional" for modern web tasks in the US.
+	*/
 	public static final double[] experimentalWanDelay = {
-		/*1 Client*/ 20703.973 /*(Kbps)*/,
-		/*2 Clients*/ 12023.957 /*(Kbps)*/,
-		/*3 Clients*/ 9887.785 /*(Kbps)*/,
-		/*4 Clients*/ 8915.775 /*(Kbps)*/,
-		/*5 Clients*/ 8259.277 /*(Kbps)*/,
-		/*6 Clients*/ 7560.574 /*(Kbps)*/,
-		/*7 Clients*/ 7262.140 /*(Kbps)*/,
-		/*8 Clients*/ 7155.361 /*(Kbps)*/,
-		/*9 Clients*/ 7041.153 /*(Kbps)*/,
-		/*10 Clients*/ 6994.595 /*(Kbps)*/,
-		/*11 Clients*/ 6653.232 /*(Kbps)*/,
-		/*12 Clients*/ 6111.868 /*(Kbps)*/,
-		/*13 Clients*/ 5570.505 /*(Kbps)*/,
-		/*14 Clients*/ 5029.142 /*(Kbps)*/,
-		/*15 Clients*/ 4487.779 /*(Kbps)*/,
-		/*16 Clients*/ 3899.729 /*(Kbps)*/,
-		/*17 Clients*/ 3311.680 /*(Kbps)*/,
-		/*18 Clients*/ 2723.631 /*(Kbps)*/,
-		/*19 Clients*/ 2135.582 /*(Kbps)*/,
-		/*20 Clients*/ 1547.533 /*(Kbps)*/,
-		/*21 Clients*/ 1500.252 /*(Kbps)*/,
-		/*22 Clients*/ 1452.972 /*(Kbps)*/,
-		/*23 Clients*/ 1405.692 /*(Kbps)*/,
-		/*24 Clients*/ 1358.411 /*(Kbps)*/,
-		/*25 Clients*/ 1311.131 /*(Kbps)*/
+		/*1 clients*/  315496.0 /*(Kbps)*/,
+		/*2 clients*/  160000.0,
+		/*3 clients*/  110000.0,
+		/*4 clients*/  85000.0,
+		/*5 clients*/  70000.0,
+		/*6 clients*/  60000.0,
+		/*7 clients*/  52000.0,
+		/*8 clients*/  46000.0,
+		/*9 clients*/  41000.0,
+		/*10 clients*/ 37000.0,
+		/*11 clients*/ 34000.0,
+		/*12 clients*/ 31000.0,
+		/*13 clients*/ 29000.0,
+		/*14 clients*/ 27000.0,
+		/*15 clients*/ 25000.0,
+		/*16 clients*/ 23500.0,
+		/*17 clients*/ 22000.0,
+		/*18 clients*/ 21000.0,
+		/*19 clients*/ 20000.0,
+		/*20 clients*/ 19000.0,
+		/*21 clients*/ 18000.0,
+		/*22 clients*/ 17000.0,
+		/*23 clients*/ 16500.0,
+		/*24 clients*/ 16000.0,
+		/*25 clients*/ 15000.0
 	};
 	
 	public LacesNetworkModel(int _numberOfMobileDevices, String _simScenario) {
@@ -333,7 +364,7 @@ public class LacesNetworkModel extends NetworkModel {
 		double result=0;
 		
 		if(numOfWlanUser < experimentalWlanDelay.length)
-			result = taskSizeInKb /*Kb*/ / (experimentalWlanDelay[numOfWlanUser] * (double) 3 ) /*Kbps*/; //802.11ac is around 3 times faster than 802.11n
+			result = taskSizeInKb /*Kb*/ / (experimentalWlanDelay[numOfWlanUser]) /*Kbps*/; // Multiplying 3 is not necessary since experimentalWlanDelay already contains high-speed data
 
 		//System.out.println("--> " + numOfWlanUser + " user, " + taskSizeInKb + " KB, " +result + " sec");
 		return result;
