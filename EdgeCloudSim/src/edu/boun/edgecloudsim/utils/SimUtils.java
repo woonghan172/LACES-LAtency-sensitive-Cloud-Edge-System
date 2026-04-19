@@ -45,7 +45,9 @@ public class SimUtils {
 	 * across simulation runs while maintaining reproducibility within
 	 * a single simulation execution.</p>
 	 */
-	public static final Random RNG = new Random(System.currentTimeMillis());
+	// public static final Random RNG = new Random(System.currentTimeMillis());
+	public static final Random RNG = new Random(12345L);
+
 
 	/**
 	 * Generates a random integer within the specified range (inclusive).

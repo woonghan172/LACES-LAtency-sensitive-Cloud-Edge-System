@@ -996,6 +996,14 @@ public class SimLogger {
 		}
 
 		// printout important results
+		double effectiveSimulationTime = SimSettings.getInstance().getSimulationTime() - SimSettings.getInstance().getWarmUpPeriod();
+		if(effectiveSimulationTime <= 0)
+			effectiveSimulationTime = SimSettings.getInstance().getSimulationTime();
+		double totalThroughput = completedTask[numOfAppTypes] / effectiveSimulationTime;
+		double edgeThroughput = completedTaskOnEdge[numOfAppTypes] / effectiveSimulationTime;
+		double cloudThroughput = completedTaskOnCloud[numOfAppTypes] / effectiveSimulationTime;
+		double mobileThroughput = completedTaskOnMobile[numOfAppTypes] / effectiveSimulationTime;
+
 		printLine("# of tasks (Edge/Cloud/Mobile): "
 				+ (failedTask[numOfAppTypes] + completedTask[numOfAppTypes]) + "("
 				+ (failedTaskOnEdge[numOfAppTypes] + completedTaskOnEdge[numOfAppTypes]) + "/" 
@@ -1039,6 +1047,16 @@ public class SimLogger {
 				+ String.format("%.6f", ((double) failedTask[numOfAppTypes] * (double) 100)
 						/ (double) (completedTask[numOfAppTypes] + failedTask[numOfAppTypes]))
 				+ "%");
+
+		printLine("throughput: "
+				+ String.format("%.6f", totalThroughput)
+				+ " tasks/sec. (on Edge: "
+				+ String.format("%.6f", edgeThroughput)
+				+ ", on Cloud: "
+				+ String.format("%.6f", cloudThroughput)
+				+ ", on Mobile: "
+				+ String.format("%.6f", mobileThroughput)
+				+ ")");
 
 		printLine("average service time: "
 				+ String.format("%.6f", serviceTime[numOfAppTypes] / (double) completedTask[numOfAppTypes])
