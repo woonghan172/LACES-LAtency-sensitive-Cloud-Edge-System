@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<applications>
+    <application name="METAQUEST_APP">
+        <usage_percentage>100</usage_percentage>
+        <prob_cloud_selection>10</prob_cloud_selection>
+        <poisson_interarrival>15</poisson_interarrival>
+        <delay_sensitivity>0.95</delay_sensitivity>
+        <active_period>600</active_period>
+        <idle_period>300</idle_period>
+        <data_upload>50</data_upload>
+        <data_download>300</data_download>
+        <task_length>50000</task_length>
+        <required_core>3</required_core>
+        <vm_utilization_on_edge>20</vm_utilization_on_edge>
+        <vm_utilization_on_cloud>30</vm_utilization_on_cloud>
+        <vm_utilization_on_mobile>75</vm_utilization_on_mobile>
+        <app_id>1</app_id>
+    </application>
+</applications>

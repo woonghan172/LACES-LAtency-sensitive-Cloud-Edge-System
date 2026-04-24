@@ -99,9 +99,10 @@ def parse_metrics_from_log(log_path: Path) -> List[Dict[str, float]]:
 
 def app_key_to_file(app: str) -> str:
     mapping = {
-        "ar": "applications_only_ar.xml",
-        "health": "applications_only_health.xml",
-        "info": "applications_only_info.xml",
+        "metaquest": "applications_only_metaquest.xml",
+        "chatgpt": "applications_only_chatgpt.xml",
+        "youtube": "applications_only_youtube.xml",
+        "custom": "applications.xml",
     }
     if app not in mapping:
         raise ValueError(f"Unknown app key: {app}")
@@ -160,7 +161,12 @@ def write_csv(path: Path, rows: Iterable[Dict[str, object]], fieldnames: List[st
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run LACES weight sweep with semantic output folders")
     parser.add_argument("--project-root", default="../../..", help="Path from python/ to EdgeCloudSim root")
-    parser.add_argument("--app", choices=["ar", "health", "info"], required=True, help="Single-app experiment target")
+    parser.add_argument(
+        "--app",
+        choices=["metaquest", "chatgpt", "youtube", "custom"],
+        required=True,
+        help="Experiment target or custom application bundle",
+    )
     parser.add_argument("--step", type=float, default=0.05, help="Weight grid step (default: 0.05)")
     parser.add_argument("--iterations", type=int, default=8, help="Iterations per weight (default: 8)")
     parser.add_argument("--scenario-name", default="default_config", help="Config properties basename")

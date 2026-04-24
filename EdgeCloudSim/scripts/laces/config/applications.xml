@@ -1,63 +1,75 @@
 <?xml version="1.0"?>
+<!--
+    * Application task lookup table storing parameters for each application type defined in applications.xml
+    * Array indices represent different application characteristics:
+
+
+    * Usage percentage (%)
+    * Probability of selecting cloud (%)
+    * Poisson mean arrival rate (seconds)
+    * Delay sensitivity factor [0-1]
+    * Active period duration (seconds)
+    * Idle period duration (seconds)
+    * Average data upload size (KB)
+    * Average data download size (KB)
+    * Average task length (MI - Million Instructions)
+    * Required number of CPU cores
+    * VM utilization on edge nodes (%)
+    * VM utilization on cloud (%)
+    * VM utilization on mobile devices (%)
+-->
 <applications>
-	<application name="AUGMENTED_REALITY">
-		<usage_percentage>30</usage_percentage>
-		<prob_cloud_selection>20</prob_cloud_selection>
-		<poisson_interarrival>2</poisson_interarrival>
-		<delay_sensitivity>0.9</delay_sensitivity>
-		<active_period>40</active_period>
-		<idle_period>20</idle_period>
-		<data_upload>1500</data_upload>
-		<data_download>25</data_download>
-		<task_length>9000</task_length>
-		<required_core>1</required_core>
-		<vm_utilization_on_edge>6</vm_utilization_on_edge>
-		<vm_utilization_on_cloud>0.6</vm_utilization_on_cloud>
-		<vm_utilization_on_mobile>24</vm_utilization_on_mobile>
-	</application>
-	<application name="HEALTH_APP">
-		<usage_percentage>20</usage_percentage>
-		<prob_cloud_selection>20</prob_cloud_selection>
-		<poisson_interarrival>3</poisson_interarrival>
-		<delay_sensitivity>0.7</delay_sensitivity>
-		<active_period>45</active_period>
-		<idle_period>90</idle_period>
-		<data_upload>20</data_upload>
-		<data_download>1250</data_download>
-		<task_length>3000</task_length>
-		<required_core>1</required_core>
-		<vm_utilization_on_edge>2</vm_utilization_on_edge>
-		<vm_utilization_on_cloud>0.2</vm_utilization_on_cloud>
-		<vm_utilization_on_mobile>8</vm_utilization_on_mobile>
-	</application>
-	<!-- <application name="HEAVY_COMP_APP">
-		<usage_percentage>20</usage_percentage>
-		<prob_cloud_selection>40</prob_cloud_selection>
-		<poisson_interarrival>20</poisson_interarrival>
-		<delay_sensitivity>0.1</delay_sensitivity>
-		<active_period>60</active_period>
-		<idle_period>120</idle_period>
-		<data_upload>2500</data_upload>
-		<data_download>200</data_download>
-		<task_length>45000</task_length>
-		<required_core>1</required_core>
-		<vm_utilization_on_edge>30</vm_utilization_on_edge>
-		<vm_utilization_on_cloud>3</vm_utilization_on_cloud>
-		<vm_utilization_on_mobile>0</vm_utilization_on_mobile>
-	</application> -->
-	<application name="INFOTAINMENT_APP">
-		<usage_percentage>50</usage_percentage>
-		<prob_cloud_selection>10</prob_cloud_selection>
-		<poisson_interarrival>7</poisson_interarrival>
-		<delay_sensitivity>0.3</delay_sensitivity>
-		<active_period>30</active_period>
-		<idle_period>45</idle_period>
-		<data_upload>25</data_upload>
-		<data_download>1000</data_download>
-		<task_length>15000</task_length>
-		<required_core>1</required_core>
-		<vm_utilization_on_edge>10</vm_utilization_on_edge>
-		<vm_utilization_on_cloud>1</vm_utilization_on_cloud>
-		<vm_utilization_on_mobile>40</vm_utilization_on_mobile>
-	</application>
+    <application name="METAQUEST_APP">
+        <usage_percentage>15</usage_percentage>
+        <prob_cloud_selection>10</prob_cloud_selection>
+        <poisson_interarrival>15</poisson_interarrival>
+        <delay_sensitivity>0.95</delay_sensitivity>
+        <active_period>600</active_period>
+        <idle_period>300</idle_period>
+        <data_upload>50</data_upload>
+        <data_download>300</data_download>
+        <task_length>50000</task_length>
+        <required_core>3</required_core>
+        <vm_utilization_on_edge>20</vm_utilization_on_edge>
+        <vm_utilization_on_cloud>30</vm_utilization_on_cloud>
+        <vm_utilization_on_mobile>75</vm_utilization_on_mobile>
+        <app_id>1</app_id>
+    </application>
+    <application name="CHATGPT">
+        <usage_percentage>40</usage_percentage>
+        <prob_cloud_selection>95</prob_cloud_selection>
+        <poisson_interarrival>40</poisson_interarrival>
+        <delay_sensitivity>0.6</delay_sensitivity>
+        <active_period>300</active_period>
+        <idle_period>90</idle_period>
+        <data_upload>200</data_upload>
+        <data_download>800</data_download>
+        <task_length>12000</task_length>
+        <required_core>2</required_core>
+        <vm_utilization_on_edge>0.1</vm_utilization_on_edge>
+        <vm_utilization_on_cloud>10</vm_utilization_on_cloud>
+        <vm_utilization_on_mobile>15</vm_utilization_on_mobile>
+        <app_id>2</app_id>
+    </application>
+    <application name="YOUTUBE">
+        <usage_percentage>45</usage_percentage>
+        <prob_cloud_selection>35</prob_cloud_selection>
+        <poisson_interarrival>4</poisson_interarrival>
+        <delay_sensitivity>0.25</delay_sensitivity>
+        <active_period>420</active_period>
+        <idle_period>90</idle_period>
+        <data_upload>10</data_upload>
+        <data_download>4500</data_download>
+        <task_length>8000</task_length>
+        <required_core>1</required_core>
+        <vm_utilization_on_edge>35</vm_utilization_on_edge>
+        <vm_utilization_on_cloud>25</vm_utilization_on_cloud>
+        <vm_utilization_on_mobile>18</vm_utilization_on_mobile>
+        <app_id>3</app_id>
+    </application>
 </applications>
+
+
+
+
+
